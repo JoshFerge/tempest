@@ -55,7 +55,8 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --fix"
+      "eslint --fix",
+      "tsc --noEmit --skipLibCheck"
     ]
   }
 }
