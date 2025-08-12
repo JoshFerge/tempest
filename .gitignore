@@ -1,13 +1,57 @@
-__pycache__/
-*.db
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# TypeScript
+dist/
+*.tsbuildinfo
+
+# Environment
 .env
-.ruff_cache/
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python (for old directory)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
 .pytest_cache/
 .mypy_cache/
-.DS_Store
-frontend/dist/
-.venv
-.env
+.ruff_cache/
+uv.lock
+*.db
 .dmypy.json
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Logs
+logs/
+*.log
+
+# Results
+results/
 evals/results/
+
+# Archives
 *.zip

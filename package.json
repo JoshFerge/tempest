@@ -1,0 +1,55 @@
+{
+  "name": "tempest",
+  "version": "0.0.1",
+  "description": "AI agent that helps you write end to end tests",
+  "main": "dist/lib/agent.js",
+  "exports": {
+    ".": {
+      "import": "./dist/lib/agent.js",
+      "require": "./dist/lib/agent.js"
+    }
+  },
+  "type": "module",
+  "bin": {
+    "tempest": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:agent": "tsx test/test-agent.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "run-example": "tsx examples/run-agent.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "testing",
+    "e2e",
+    "playwright",
+    "ai",
+    "openai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@openai/agents": "^0.0.15",
+    "@playwright/test": "^1.48.0",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.48.0",
+    "uuid": "^11.0.5",
+    "zod": "3.25.67"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@types/node": "^22.10.2",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "eslint": "^9.18.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
