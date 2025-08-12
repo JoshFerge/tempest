@@ -2,14 +2,14 @@
 
 import { testWriterAgent } from "./lib/agent.js";
 import * as process from "process";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 
 // Load environment variables from .env file
 dotenv.config();
 
 async function main() {
   const args = process.argv.slice(2);
-  
+
   if (args.length < 2) {
     console.error("Usage: npx tempest <url> <instructions>");
     console.error("Example: npx tempest localhost:8080 'play and have x win.'");
