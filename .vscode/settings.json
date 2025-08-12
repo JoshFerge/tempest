@@ -1,0 +1,6 @@
+{
+  "flake8.enabled": false,
+  "terminal.integrated.env.osx": {
+    "PYTHONPATH": "${workspaceFolder}/backend/src"
+  }
+}

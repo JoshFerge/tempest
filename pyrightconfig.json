@@ -1,0 +1,10 @@
+{
+  "pythonVersion": "3.12",
+  "reportAny": false,
+  "reportCallIssue": false,
+  "reportExplicitAny": false,
+  "reportUnusedParameter": false,
+  "typeCheckingMode": "standard",
+  "venv": ".venv",
+  "venvPath": "."
+}
