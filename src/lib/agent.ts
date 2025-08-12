@@ -169,14 +169,14 @@ export async function testWriterAgent(
     if (typeof output === 'string') {
       try {
         output = JSON.parse(output);
-      } catch (e) {
+      } catch {
         // Failed to parse as JSON, keep as is
       }
     }
     
     const parsed = E2ETestSpecSchema.safeParse(output);
     if (parsed.success) {
-      finalOutput = parsed.data;
+      finalOutput = parsed.data as E2ETestSpec;
     }
   }
 

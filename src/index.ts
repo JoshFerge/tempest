@@ -7,7 +7,7 @@ import * as dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();
 
-async function main() {
+async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
   if (args.length < 2) {
