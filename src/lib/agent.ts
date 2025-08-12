@@ -1,10 +1,10 @@
 import { Agent, run, tool } from "@openai/agents";
 import { z } from "zod";
-import { runTest } from "./harness";
+import { runTest } from "./harness.js";
 import { 
   OpenAIModel, 
   E2ETestSpec 
-} from "../types";
+} from "../types/index.js";
 
 const TestStepSchema = z.object({
   step_number: z.number(),

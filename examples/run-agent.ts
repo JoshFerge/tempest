@@ -1,4 +1,4 @@
-import { testWriterAgent } from "../src/lib/agent";
+import { testWriterAgent } from "../src/lib/agent.js";
 import dotenv from "dotenv";
 
 // Load environment variables from .env file

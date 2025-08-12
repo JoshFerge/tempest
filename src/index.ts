@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { testWriterAgent } from "./lib/agent";
+import { testWriterAgent } from "./lib/agent.js";
 import * as process from "process";
 import dotenv from "dotenv";
 
