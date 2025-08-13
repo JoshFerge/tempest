@@ -31,13 +31,33 @@ Tempest is an AI agent that helps you write end-to-end tests using Playwright an
 
 ### As a CLI tool
 
-Run Tempest with a URL and test instructions:
+Tempest provides two main commands: `create` for generating tests and `test` for running them.
+
+#### Creating tests
+
+Generate E2E tests for your application:
 
 ```bash
-npx tempest <url> <instructions>
+npx tempest create <url> <instructions>
 
 # Example
-npx tempest localhost:8080 "play tic-tac-toe and have X win"
+npx tempest create localhost:8080 "play tic-tac-toe and have X win"
+
+# Save the generated test to a file in the tempest/ directory
+npx tempest create localhost:8080 "click login button" --save
+```
+
+#### Running tests
+
+Run a single test file or all tests in the tempest directory:
+
+```bash
+# Run a specific test file
+npx tempest test ./tempest/login-test.spec.ts
+npx tempest test ./my-test.js
+
+# Run all tests in the tempest/ directory
+npx tempest test --all
 ```
 
 ### Programmatically
