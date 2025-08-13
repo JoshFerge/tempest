@@ -7,29 +7,36 @@ dotenv.config();
 
 async function testCLI() {
   console.log("Testing Tempest CLI...");
-  console.log("OPENAI_API_KEY is", process.env.OPENAI_API_KEY ? "set" : "not set");
+  console.log(
+    "OPENAI_API_KEY is",
+    process.env.OPENAI_API_KEY ? "set" : "not set"
+  );
 
   return new Promise<void>((resolve, reject) => {
     // Path to the CLI entry point
     const cliPath = path.join(process.cwd(), "src", "index.ts");
-    
+
     // Run the CLI with tsx
-    const child = spawn("npx", ["tsx", cliPath, "localhost:8080", "play and have x win"], {
-      env: process.env,
-      stdio: ["inherit", "pipe", "pipe"],
-    });
+    const child = spawn(
+      "npx",
+      ["tsx", cliPath, "localhost:8080", "play and have x win"],
+      {
+        env: process.env,
+        stdio: ["inherit", "pipe", "pipe"],
+      }
+    );
 
     let stdout = "";
 
     child.stdout?.on("data", (data) => {
       const output = data.toString();
       stdout += output;
-      process.stdout.write(output); // Print to console in real-time
+      process.stdout.write(output);
     });
 
     child.stderr?.on("data", (data) => {
       const output = data.toString();
-      process.stderr.write(output); // Print errors to console
+      process.stderr.write(output);
     });
 
     child.on("error", (error) => {
@@ -39,9 +46,13 @@ async function testCLI() {
 
     child.on("close", (code) => {
       if (code === 0) {
-        // Check if the expected output is present
-        if (stdout.includes("E2E TEST SPECIFICATION") && stdout.includes("TEST STEPS")) {
-          console.log("\n✅ CLI test passed! Agent generated test successfully via CLI.");
+        if (
+          stdout.includes("E2E TEST SPECIFICATION") &&
+          stdout.includes("TEST STEPS")
+        ) {
+          console.log(
+            "\n✅ CLI test passed! Agent generated test successfully via CLI."
+          );
           resolve();
         } else {
           console.error("\n❌ CLI test failed: Expected output not found");
@@ -55,7 +66,6 @@ async function testCLI() {
   });
 }
 
-// Run the test
 testCLI().catch((error) => {
   console.error("Test failed:", error);
   process.exit(1);
