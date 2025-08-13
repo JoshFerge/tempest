@@ -23,7 +23,7 @@ export async function runTest(
   let testFn: (ctx: TestContext) => Promise<void>;
 
   if (typeof testCode === "string") {
-    const AsyncFunction = (async function () {}).constructor as any;
+    const AsyncFunction = (async function () {}).constructor as new (name: string, body: string) => (ctx: TestContext) => Promise<void>;
     const functionBody = testCode.replace(/^async\s+function\s+\w+\s*\([^)]*\)\s*{/, "")
       .replace(/}$/, "");
     testFn = new AsyncFunction("ctx", functionBody);
@@ -54,15 +54,15 @@ export async function runTest(
 
   try {
     await testFn(ctx);
-  } catch (e: any) {
+  } catch (e) {
     status = "FAIL";
-    error = e;
+    error = e as Error;
 
     try {
       const html = await page.locator("body").innerHTML();
       const accessibility = await page.accessibility.snapshot();
-      (e as any).dom_snapshot = html;
-      (e as any).accessibility_snapshot = accessibility;
+      (error as Error & { dom_snapshot?: string; accessibility_snapshot?: unknown }).dom_snapshot = html;
+      (error as Error & { dom_snapshot?: string; accessibility_snapshot?: unknown }).accessibility_snapshot = accessibility;
     } catch {
     }
   } finally {

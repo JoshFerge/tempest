@@ -51,9 +51,11 @@ export interface E2ETestSpec {
   async_playwright_test_code: string;
 }
 
+import type { Page, expect } from "@playwright/test";
+
 export interface TestContext {
-  page: any;
-  expect: any;
+  page: Page;
+  expect: typeof expect;
   re: typeof RegExp;
-  uuid: any;
+  uuid: { uuid4: () => string };
 }

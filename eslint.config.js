@@ -8,7 +8,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'examples/**/*.ts'],
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'examples/**/*.ts', 'test/**/*.ts'],
     languageOptions: {
       parser,
       parserOptions: {

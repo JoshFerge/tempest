@@ -38,13 +38,14 @@ const runTestTool = tool({
         debugStdout: true,
       });
       return { success: true, failure_output: null };
-    } catch (e: any) {
-      let output = String(e);
-      if (e.dom_snapshot) {
-        output += `\n\nDOM SNAPSHOT:\n${e.dom_snapshot}`;
+    } catch (e) {
+      const error = e as Error & { dom_snapshot?: string; accessibility_snapshot?: string };
+      let output = String(error);
+      if (error.dom_snapshot) {
+        output += `\n\nDOM SNAPSHOT:\n${error.dom_snapshot}`;
       }
-      if (e.accessibility_snapshot) {
-        output += `\n\nACCESSIBILITY SNAPSHOT:\n${e.accessibility_snapshot}`;
+      if (error.accessibility_snapshot) {
+        output += `\n\nACCESSIBILITY SNAPSHOT:\n${error.accessibility_snapshot}`;
       }
       return { success: false, failure_output: output };
     }
@@ -144,7 +145,7 @@ export async function testWriterAgent(
   const agent = new Agent({
     name: "E2E Test Writer",
     instructions: prompt,
-    model: OpenAIModel.GPT_4_1 as any,
+    model: OpenAIModel.GPT_4_1 as string,
     tools: [runTestTool, emitStepsTool],
     outputType: E2ETestSpecSchema,
   });
@@ -163,7 +164,7 @@ export async function testWriterAgent(
   // The run function returns a RunResult with the output
   if (result && typeof result === 'object') {
     // Check if result has a direct output or if it's wrapped in a state
-    let output = (result as any).state?._currentStep?.output || (result as any).output || result;
+    let output = (result as unknown as Record<string, unknown> & { state?: { _currentStep?: { output?: unknown } }; output?: unknown }).state?._currentStep?.output || (result as unknown as Record<string, unknown> & { output?: unknown }).output || result;
     
     // If output is a string, try to parse it as JSON
     if (typeof output === 'string') {

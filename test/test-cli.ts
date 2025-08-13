@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import * as path from "path";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
@@ -20,7 +20,6 @@ async function testCLI() {
     });
 
     let stdout = "";
-    let stderr = "";
 
     child.stdout?.on("data", (data) => {
       const output = data.toString();
@@ -30,7 +29,6 @@ async function testCLI() {
 
     child.stderr?.on("data", (data) => {
       const output = data.toString();
-      stderr += output;
       process.stderr.write(output); // Print errors to console
     });
 
