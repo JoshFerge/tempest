@@ -214,16 +214,7 @@ export async function testWriterAgent(
       const fileName = `${sanitizedTestName}.spec.ts`;
       const filePath = path.join(tempestDir, fileName);
       
-      const testFileContent = `import { test, expect } from '@playwright/test';
-
-// Test: ${finalOutput.test_name}
-// Description: ${finalOutput.test_description}
-// Target URL: ${finalOutput.target_url}
-
-test('${finalOutput.test_name}', async ({ page }) => {
-${finalOutput.async_playwright_test_code.split('\n').map(line => '  ' + line).join('\n')}
-});
-`;
+      const testFileContent = finalOutput.async_playwright_test_code;
       
       await fs.writeFile(filePath, testFileContent, 'utf-8');
       console.log("\n" + "=".repeat(79));

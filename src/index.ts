@@ -27,11 +27,86 @@ cli
   });
 
 cli
-  .command("test <filepath>", "Run a test file")
+  .command("test [filepath]", "Run a test file or all tests")
+  .option("--all", "Run all tests in the tempest directory")
   .example("tempest test ./tempest/login-test.spec.ts")
   .example("tempest test ./my-test.js")
-  .action(async (filepath: string) => {
+  .example("tempest test --all")
+  .action(async (filepath: string | undefined, options: { all?: boolean }) => {
     try {
+      // Handle --all flag
+      if (options.all) {
+        const tempestDir = path.join(process.cwd(), 'tempest');
+        
+        // Check if tempest directory exists
+        try {
+          await fs.access(tempestDir);
+        } catch {
+          console.error(`Error: tempest directory not found at ${tempestDir}`);
+          process.exit(1);
+        }
+        
+        // Get all test files in tempest directory
+        const files = await fs.readdir(tempestDir);
+        const testFiles = files.filter(file => file.endsWith('.spec.ts') || file.endsWith('.js'));
+        
+        if (testFiles.length === 0) {
+          console.log("No test files found in tempest directory");
+          return;
+        }
+        
+        console.log("=" + "=".repeat(79));
+        console.log(`RUNNING ALL TESTS (${testFiles.length} files)`);
+        console.log("=" + "=".repeat(79));
+        
+        let passedCount = 0;
+        let failedCount = 0;
+        const failedTests: string[] = [];
+        
+        for (const testFile of testFiles) {
+          const testPath = path.join(tempestDir, testFile);
+          console.log(`\nRunning: ${testFile}`);
+          console.log("-".repeat(80));
+          
+          try {
+            const testCode = await fs.readFile(testPath, 'utf-8');
+            await runTest(testFile, testCode, {
+              headless: process.env.HEADLESS !== "false",
+              debugStdout: true,
+            });
+            console.log(`✓ ${testFile} PASSED`);
+            passedCount++;
+          } catch (error) {
+            console.error(`✗ ${testFile} FAILED`);
+            console.error(`  Error: ${error}`);
+            failedCount++;
+            failedTests.push(testFile);
+          }
+        }
+        
+        // Summary
+        console.log("\n" + "=" + "=".repeat(79));
+        console.log("TEST SUMMARY");
+        console.log("=" + "=".repeat(79));
+        console.log(`Total: ${testFiles.length} | Passed: ${passedCount} | Failed: ${failedCount}`);
+        
+        if (failedTests.length > 0) {
+          console.log("\nFailed tests:");
+          failedTests.forEach(test => console.log(`  - ${test}`));
+          process.exit(1);
+        } else {
+          console.log("\nAll tests passed! ✓");
+        }
+        
+        return;
+      }
+      
+      // Handle single file test
+      if (!filepath) {
+        console.error("Error: Please provide a filepath or use --all flag");
+        process.exit(1);
+      }
+      
       // Resolve the file path
       const resolvedPath = path.resolve(filepath);
       
@@ -44,30 +119,7 @@ cli
       }
       
       // Read the test file
-      const fileContent = await fs.readFile(resolvedPath, 'utf-8');
-      
-      // Extract the test function from the file
-      // Handle both raw test functions and Playwright test wrapper format
-      let testCode: string;
-      
-      // Check if it's a Playwright test file with test() wrapper
-      const playwrightTestMatch = fileContent.match(/test\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*async\s*\(\s*{\s*page\s*}\s*\)\s*=>\s*{([\s\S]*?)}\s*\)/);
-      
-      if (playwrightTestMatch) {
-        // Extract the test name and body from Playwright test format
-        const testName = playwrightTestMatch[1];
-        testCode = playwrightTestMatch[2].trim();
-        console.log(`Running test: "${testName}"`);
-      } else {
-        // Try to extract a raw async function
-        const functionMatch = fileContent.match(/async\s+function\s+\w+\s*\([^)]*\)\s*{[\s\S]*}/);
-        if (functionMatch) {
-          testCode = functionMatch[0];
-        } else {
-          // Assume the entire file is the test code
-          testCode = fileContent;
-        }
-      }
+      const testCode = await fs.readFile(resolvedPath, 'utf-8');
       
       console.log("=" + "=".repeat(79));
       console.log("RUNNING TEST FROM FILE");
