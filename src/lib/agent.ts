@@ -5,6 +5,8 @@ import {
   OpenAIModel, 
   E2ETestSpec 
 } from "../types/index.js";
+import * as fs from "fs/promises";
+import * as path from "path";
 
 const TestStepSchema = z.object({
   step_number: z.number(),
@@ -66,7 +68,8 @@ const emitStepsTool = tool({
 
 export async function testWriterAgent(
   url: string,
-  instructions: string
+  instructions: string,
+  save?: boolean
 ): Promise<E2ETestSpec | null> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY environment variable is not set");
@@ -199,6 +202,34 @@ export async function testWriterAgent(
       console.log(`${i + 1}. ${JSON.stringify(step)}`);
     });
     console.log("=" + "=".repeat(79));
+    
+    if (save) {
+      const tempestDir = path.join(process.cwd(), 'tempest');
+      await fs.mkdir(tempestDir, { recursive: true });
+      
+      const sanitizedTestName = finalOutput.test_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      const fileName = `${sanitizedTestName}.spec.ts`;
+      const filePath = path.join(tempestDir, fileName);
+      
+      const testFileContent = `import { test, expect } from '@playwright/test';
+
+// Test: ${finalOutput.test_name}
+// Description: ${finalOutput.test_description}
+// Target URL: ${finalOutput.target_url}
+
+test('${finalOutput.test_name}', async ({ page }) => {
+${finalOutput.async_playwright_test_code.split('\n').map(line => '  ' + line).join('\n')}
+});
+`;
+      
+      await fs.writeFile(filePath, testFileContent, 'utf-8');
+      console.log("\n" + "=".repeat(79));
+      console.log(`Test saved to: ${filePath}`);
+      console.log("=".repeat(79));
+    }
   } else {
     console.log("No final output available");
   }
