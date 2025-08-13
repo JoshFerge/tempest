@@ -15,6 +15,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
     "types": ["node"]
   },
   "include": ["src/**/*"],
