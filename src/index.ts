@@ -1,32 +1,27 @@
 #!/usr/bin/env node
 
+import { cac } from "cac";
 import { testWriterAgent } from "./lib/agent.js";
-import * as process from "process";
 import * as dotenv from "dotenv";
 
 // Load environment variables from .env file
 dotenv.config();
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+const cli = cac("tempest");
 
-  if (args.length < 2) {
-    console.error("Usage: npx tempest <url> <instructions>");
-    console.error("Example: npx tempest localhost:8080 'play and have x win.'");
-    process.exit(1);
-  }
+cli
+  .command("<url> <instructions>", "Generate end-to-end tests for a URL")
+  .example("tempest localhost:8080 'play and have x win.'")
+  .action(async (url: string, instructions: string) => {
+    try {
+      await testWriterAgent(url, instructions);
+    } catch (error) {
+      console.error("Error running test writer agent:", error);
+      process.exit(1);
+    }
+  });
 
-  const [url, instructions] = args;
-  
-  try {
-    await testWriterAgent(url, instructions);
-  } catch (error) {
-    console.error("Error running test writer agent:", error);
-    process.exit(1);
-  }
-}
+cli.help();
+cli.version("0.0.1");
 
-main().catch((error) => {
-  console.error("Unexpected error:", error);
-  process.exit(1);
-});
+cli.parse();
