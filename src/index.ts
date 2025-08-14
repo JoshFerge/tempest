@@ -7,25 +7,89 @@ import * as dotenv from "dotenv";
 import * as fs from "fs/promises";
 import * as path from "path";
 
+import * as Sentry from "@sentry/node";
+
+Sentry.init({
+  dsn: "https://9fd93d55daed24556c7bc13afbbf571d@o1093633.ingest.us.sentry.io/4509839772614656",
+  environment: process.env.NODE_ENV ?? "development",
+  tracesSampleRate: 1.0,
+  enableLogs: true,
+  sendDefaultPii: false,
+});
+
+process.on("unhandledRejection", (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  Sentry.captureException(err);
+  Sentry.flush(2000).finally(() => process.exit(1));
+});
+
+process.on("uncaughtException", (err) => {
+  Sentry.captureException(err);
+  Sentry.flush(2000).finally(() => process.exit(1));
+});
+
 // Load environment variables from .env file
 dotenv.config();
 
 const cli = cac("tempest");
 
+function withSentryAction<TArgs extends unknown[], TReturn>(
+  commandName: string,
+  fn: (...args: TArgs) => Promise<TReturn>
+) {
+  return async (...args: TArgs): Promise<TReturn> => {
+    Sentry.setTag("cli", "tempest");
+    Sentry.setTag("command", commandName);
+    Sentry.setContext("argv", { argv: process.argv.slice(2) });
+    try {
+      const runner = async () => {
+        return await fn(...args);
+      };
+      const maybeStartSpan = (
+        Sentry as unknown as {
+          startSpan?: <T>(ctx: unknown, cb: () => Promise<T>) => Promise<T>;
+        }
+      ).startSpan;
+      if (typeof maybeStartSpan === "function") {
+        return await maybeStartSpan({ name: `cli:${commandName}` }, runner);
+      }
+      return await runner();
+    } catch (error) {
+      Sentry.captureException(error as Error);
+      await Sentry.flush(2000);
+      throw error;
+    }
+  };
+}
+
 cli
-  .command("create <url> [...instructions]", "Generate end-to-end tests for a URL")
+  .command(
+    "create <url> [...instructions]",
+    "Generate end-to-end tests for a URL"
+  )
   .option("--save", "Save generated test to a tempest directory")
   .example("tempest create localhost:8080 play and have x win")
   .example("tempest create localhost:8080 click login --save")
-  .action(async (url: string, instructions: string[], options: { save?: boolean }) => {
-    try {
-      const instructionText = instructions.join(" ");
-      await testWriterAgent(url, instructionText, options.save);
-    } catch (error) {
-      console.error("Error running test writer agent:", error);
-      process.exit(1);
-    }
-  });
+  .action(
+    withSentryAction(
+      "create",
+      async (
+        url: string,
+        instructions: string[],
+        options: { save?: boolean }
+      ) => {
+        try {
+          const instructionText = instructions.join(" ");
+          await testWriterAgent(url, instructionText, options.save);
+        } catch (error) {
+          console.error("Error running test writer agent:", error);
+          Sentry.captureException(error as Error);
+          await Sentry.flush(2000);
+          process.exit(1);
+        }
+      }
+    )
+  );
 
 cli
   .command("test [filepath]", "Run a test file or all tests")
@@ -33,119 +97,133 @@ cli
   .example("tempest test ./tempest/login-test.spec.ts")
   .example("tempest test ./my-test.js")
   .example("tempest test --all")
-  .action(async (filepath: string | undefined, options: { all?: boolean }) => {
-    try {
-      // Handle --all flag
-      if (options.all) {
-        const tempestDir = path.join(process.cwd(), 'tempest');
-        
-        // Check if tempest directory exists
+  .action(
+    withSentryAction(
+      "test",
+      async (filepath: string | undefined, options: { all?: boolean }) => {
         try {
-          await fs.access(tempestDir);
-        } catch {
-          console.error(`Error: tempest directory not found at ${tempestDir}`);
-          process.exit(1);
-        }
-        
-        // Get all test files in tempest directory
-        const files = await fs.readdir(tempestDir);
-        const testFiles = files.filter(file => file.endsWith('.spec.ts') || file.endsWith('.js'));
-        
-        if (testFiles.length === 0) {
-          console.log("No test files found in tempest directory");
-          return;
-        }
-        
-        console.log("=" + "=".repeat(79));
-        console.log(`RUNNING ALL TESTS (${testFiles.length} files)`);
-        console.log("=" + "=".repeat(79));
-        
-        let passedCount = 0;
-        let failedCount = 0;
-        const failedTests: string[] = [];
-        
-        for (const testFile of testFiles) {
-          const testPath = path.join(tempestDir, testFile);
-          console.log(`\nRunning: ${testFile}`);
-          console.log("-".repeat(80));
-          
-          try {
-            const testCode = await fs.readFile(testPath, 'utf-8');
-            await runTest(testFile, testCode, {
-              headless: process.env.HEADLESS !== "false",
-              debugStdout: true,
-            });
-            console.log(`✓ ${testFile} PASSED`);
-            passedCount++;
-          } catch (error) {
-            console.error(`✗ ${testFile} FAILED`);
-            console.error(`  Error: ${error}`);
-            failedCount++;
-            failedTests.push(testFile);
+          // Handle --all flag
+          if (options.all) {
+            const tempestDir = path.join(process.cwd(), "tempest");
+
+            // Check if tempest directory exists
+            try {
+              await fs.access(tempestDir);
+            } catch {
+              console.error(
+                `Error: tempest directory not found at ${tempestDir}`
+              );
+              await Sentry.flush(1000);
+              process.exit(1);
+            }
+
+            // Get all test files in tempest directory
+            const files = await fs.readdir(tempestDir);
+            const testFiles = files.filter(
+              (file) => file.endsWith(".spec.ts") || file.endsWith(".js")
+            );
+
+            if (testFiles.length === 0) {
+              console.log("No test files found in tempest directory");
+              return;
+            }
+
+            console.log("=" + "=".repeat(79));
+            console.log(`RUNNING ALL TESTS (${testFiles.length} files)`);
+            console.log("=" + "=".repeat(79));
+
+            let passedCount = 0;
+            let failedCount = 0;
+            const failedTests: string[] = [];
+
+            for (const testFile of testFiles) {
+              const testPath = path.join(tempestDir, testFile);
+              console.log(`\nRunning: ${testFile}`);
+              console.log("-".repeat(80));
+
+              try {
+                const testCode = await fs.readFile(testPath, "utf-8");
+                await runTest(testFile, testCode, {
+                  headless: process.env.HEADLESS !== "false",
+                  debugStdout: true,
+                });
+                console.log(`✓ ${testFile} PASSED`);
+                passedCount++;
+              } catch (error) {
+                console.error(`✗ ${testFile} FAILED`);
+                console.error(`  Error: ${error}`);
+                failedCount++;
+                failedTests.push(testFile);
+              }
+            }
+
+            // Summary
+            console.log("\n" + "=" + "=".repeat(79));
+            console.log("TEST SUMMARY");
+            console.log("=" + "=".repeat(79));
+            console.log(
+              `Total: ${testFiles.length} | Passed: ${passedCount} | Failed: ${failedCount}`
+            );
+
+            if (failedTests.length > 0) {
+              console.log("\nFailed tests:");
+              failedTests.forEach((test) => console.log(`  - ${test}`));
+              await Sentry.flush(2000);
+              process.exit(1);
+            } else {
+              console.log("\nAll tests passed! ✓");
+            }
+
+            return;
           }
-        }
-        
-        // Summary
-        console.log("\n" + "=" + "=".repeat(79));
-        console.log("TEST SUMMARY");
-        console.log("=" + "=".repeat(79));
-        console.log(`Total: ${testFiles.length} | Passed: ${passedCount} | Failed: ${failedCount}`);
-        
-        if (failedTests.length > 0) {
-          console.log("\nFailed tests:");
-          failedTests.forEach(test => console.log(`  - ${test}`));
+
+          // Handle single file test
+          if (!filepath) {
+            console.error("Error: Please provide a filepath or use --all flag");
+            await Sentry.flush(1000);
+            process.exit(1);
+          }
+
+          // Resolve the file path
+          const resolvedPath = path.resolve(filepath);
+
+          // Check if file exists
+          try {
+            await fs.access(resolvedPath);
+          } catch {
+            console.error(`Error: File not found: ${resolvedPath}`);
+            await Sentry.flush(1000);
+            process.exit(1);
+          }
+
+          // Read the test file
+          const testCode = await fs.readFile(resolvedPath, "utf-8");
+
+          console.log("=" + "=".repeat(79));
+          console.log("RUNNING TEST FROM FILE");
+          console.log("=" + "=".repeat(79));
+          console.log(`File: ${resolvedPath}`);
+          console.log("=" + "=".repeat(79));
+
+          // Run the test through the harness
+          await runTest(path.basename(filepath), testCode, {
+            headless: process.env.HEADLESS !== "false",
+            debugStdout: true,
+          });
+
+          console.log("\n" + "=" + "=".repeat(79));
+          console.log("TEST PASSED ✓");
+          console.log("=" + "=".repeat(79));
+        } catch (error) {
+          console.error("\n" + "=" + "=".repeat(79));
+          console.error("TEST FAILED ✗");
+          console.error("=" + "=".repeat(79));
+          console.error("Error:", error);
           process.exit(1);
-        } else {
-          console.log("\nAll tests passed! ✓");
         }
-        
-        return;
       }
-      
-      // Handle single file test
-      if (!filepath) {
-        console.error("Error: Please provide a filepath or use --all flag");
-        process.exit(1);
-      }
-      
-      // Resolve the file path
-      const resolvedPath = path.resolve(filepath);
-      
-      // Check if file exists
-      try {
-        await fs.access(resolvedPath);
-      } catch {
-        console.error(`Error: File not found: ${resolvedPath}`);
-        process.exit(1);
-      }
-      
-      // Read the test file
-      const testCode = await fs.readFile(resolvedPath, 'utf-8');
-      
-      console.log("=" + "=".repeat(79));
-      console.log("RUNNING TEST FROM FILE");
-      console.log("=" + "=".repeat(79));
-      console.log(`File: ${resolvedPath}`);
-      console.log("=" + "=".repeat(79));
-      
-      // Run the test through the harness
-      await runTest(path.basename(filepath), testCode, {
-        headless: process.env.HEADLESS !== "false",
-        debugStdout: true,
-      });
-      
-      console.log("\n" + "=" + "=".repeat(79));
-      console.log("TEST PASSED ✓");
-      console.log("=" + "=".repeat(79));
-      
-    } catch (error) {
-      console.error("\n" + "=" + "=".repeat(79));
-      console.error("TEST FAILED ✗");
-      console.error("=" + "=".repeat(79));
-      console.error("Error:", error);
-      process.exit(1);
-    }
-  });
+    )
+  );
 
 cli.help();
 cli.version("0.0.1");
@@ -153,16 +231,23 @@ cli.version("0.0.1");
 // Add default command to handle invalid usage
 cli
   .command("[...args]", "Default handler", { allowUnknownOptions: true })
-  .action((args) => {
-    if (args && args.length > 0) {
-      console.error(`Error: Invalid command or missing subcommand.`);
-      console.error(`\nUsage:`);
-      console.error(`  tempest create <url> <instructions>  - Generate a test`);
-      console.error(`  tempest test <filepath>               - Run a test file`);
-      console.error(`\nRun 'tempest --help' for more information.`);
-      process.exit(1);
-    }
-  });
+  .action(
+    withSentryAction("default", async (args: unknown[]) => {
+      if (args && args.length > 0) {
+        console.error(`Error: Invalid command or missing subcommand.`);
+        console.error(`\nUsage:`);
+        console.error(
+          `  tempest create <url> <instructions>  - Generate a test`
+        );
+        console.error(
+          `  tempest test <filepath>               - Run a test file`
+        );
+        console.error(`\nRun 'tempest --help' for more information.`);
+        await Sentry.flush(1000);
+        process.exit(1);
+      }
+    })
+  );
 
 // Check if no command was provided (only the script name)
 if (process.argv.length <= 2) {
@@ -171,7 +256,9 @@ if (process.argv.length <= 2) {
   console.error("  tempest create <url> <instructions>  - Generate a test");
   console.error("  tempest test <filepath>               - Run a test file");
   console.error("\nRun 'tempest --help' for more information.");
-  process.exit(1);
+  Sentry.flush(1000).then(() => {
+    process.exit(1);
+  });
 }
 
 // Parse arguments
