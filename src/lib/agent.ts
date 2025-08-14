@@ -17,6 +17,29 @@ const TestStepSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+function prettyPrintTestSteps(steps: z.infer<typeof TestStepSchema>[], title: string = "TEST STEPS") {
+  console.log("=" + "=".repeat(79));
+  console.log(title);
+  console.log("=" + "=".repeat(79));
+  steps.forEach((step, i) => {
+    console.log(`${i + 1}. ${step.action}`);
+    if (step.target_element) {
+      console.log(`   Target: ${step.target_element}`);
+    }
+    if (step.input_data) {
+      console.log(`   Input: ${step.input_data}`);
+    }
+    console.log(`   Expected: ${step.expected_result}`);
+    if (step.notes) {
+      console.log(`   Notes: ${step.notes}`);
+    }
+    if (i < steps.length - 1) {
+      console.log("");
+    }
+  });
+  console.log("=" + "=".repeat(79));
+}
+
 
 const E2ETestSpecSchema = z.object({
   test_name: z.string(),
@@ -61,7 +84,7 @@ const emitStepsTool = tool({
     test_steps: z.array(TestStepSchema),
   }),
   async execute({ test_steps }) {
-    console.log("Test Steps:", test_steps);
+    prettyPrintTestSteps(test_steps, "PLANNED TEST STEPS");
     return { success: true };
   }
 });
@@ -195,13 +218,7 @@ export async function testWriterAgent(
     console.log("PLAYWRIGHT TEST CODE");
     console.log("=" + "=".repeat(79));
     console.log(finalOutput.async_playwright_test_code);
-    console.log("=" + "=".repeat(79));
-    console.log("TEST STEPS");
-    console.log("=" + "=".repeat(79));
-    finalOutput.test_steps.forEach((step, i) => {
-      console.log(`${i + 1}. ${JSON.stringify(step)}`);
-    });
-    console.log("=" + "=".repeat(79));
+    prettyPrintTestSteps(finalOutput.test_steps, "FINAL TEST STEPS");
     
     if (save) {
       const tempestDir = path.join(process.cwd(), 'tempest');
