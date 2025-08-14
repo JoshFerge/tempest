@@ -98,4 +98,3 @@ The project uses Jest for unit testing but primarily relies on evaluation script
 - `test-agent.ts`: Tests the agent's ability to generate working tests
 - `test-cli.ts`: Validates CLI interface and argument parsing
 
-Test artifacts are stored in `results/artifacts/` including browser traces and screenshots.

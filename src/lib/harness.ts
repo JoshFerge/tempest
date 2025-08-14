@@ -1,14 +1,6 @@
 import { chromium, expect } from "@playwright/test";
-import * as path from "path";
-import * as fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { TestContext } from "../types/index.js";
-
-const ARTIFACTS_DIR = path.join(process.cwd(), "results", "artifacts");
-
-if (!fs.existsSync(ARTIFACTS_DIR)) {
-  fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
-}
 
 export async function runTest(
   name: string,

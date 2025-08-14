@@ -13,13 +13,14 @@ dotenv.config();
 const cli = cac("tempest");
 
 cli
-  .command("create <url> <instructions>", "Generate end-to-end tests for a URL")
+  .command("create <url> [...instructions]", "Generate end-to-end tests for a URL")
   .option("--save", "Save generated test to a tempest directory")
-  .example("tempest create localhost:8080 'play and have x win.'")
-  .example("tempest create localhost:8080 'click login' --save")
-  .action(async (url: string, instructions: string, options: { save?: boolean }) => {
+  .example("tempest create localhost:8080 play and have x win")
+  .example("tempest create localhost:8080 click login --save")
+  .action(async (url: string, instructions: string[], options: { save?: boolean }) => {
     try {
-      await testWriterAgent(url, instructions, options.save);
+      const instructionText = instructions.join(" ");
+      await testWriterAgent(url, instructionText, options.save);
     } catch (error) {
       console.error("Error running test writer agent:", error);
       process.exit(1);
@@ -163,4 +164,15 @@ cli
     }
   });
 
+// Check if no command was provided (only the script name)
+if (process.argv.length <= 2) {
+  console.error("Error: No command provided.");
+  console.error("\nUsage:");
+  console.error("  tempest create <url> <instructions>  - Generate a test");
+  console.error("  tempest test <filepath>               - Run a test file");
+  console.error("\nRun 'tempest --help' for more information.");
+  process.exit(1);
+}
+
+// Parse arguments
 cli.parse();

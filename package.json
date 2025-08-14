@@ -1,5 +1,5 @@
 {
-  "name": "tempest",
+  "name": "@tempest-qa/tempest",
   "version": "0.0.1",
   "description": "AI agent that helps you write end to end tests",
   "main": "dist/lib/agent.js",
@@ -24,7 +24,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "prepublishOnly": "npm run build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "claude": "claude --dangerously-skip-permissions"
   },
   "keywords": [
     "testing",
@@ -35,6 +36,9 @@
   ],
   "author": "",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@openai/agents": "^0.0.15",
     "@playwright/test": "^1.48.0",
