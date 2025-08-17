@@ -23,6 +23,8 @@
     "eval": "tsx evals/test-agent.ts && tsx evals/test-cli.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "prepublishOnly": "npm run build",
     "prepare": "husky",
     "claude": "claude --dangerously-skip-permissions"
@@ -51,6 +53,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@jest/globals": "^30.0.5",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.17.1",
     "@types/uuid": "^10.0.0",
@@ -60,12 +63,16 @@
     "husky": "^9.1.7",
     "jest": "^30.0.5",
     "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2",
     "ts-jest": "^29.4.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },
   "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md}": [
+      "prettier --write"
+    ],
     "*.{ts,tsx}": [
       "eslint --fix",
       "tsc --noEmit --skipLibCheck"

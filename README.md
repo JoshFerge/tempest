@@ -12,7 +12,7 @@ Tempest is an AI agent that helps you write end-to-end tests using Playwright an
 
 ## Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - An OpenAI API key
 
 ## Setup
@@ -63,12 +63,9 @@ npx tempest test --all
 ### Programmatically
 
 ```typescript
-import { testWriterAgent } from "tempest";
+import { testWriterAgent } from 'tempest'
 
-const result = await testWriterAgent(
-  "localhost:8080",
-  "play and have x win"
-);
+const result = await testWriterAgent('localhost:8080', 'play and have x win')
 ```
 
 ### Running the example

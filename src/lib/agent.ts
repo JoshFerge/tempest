@@ -1,12 +1,9 @@
-import { Agent, run, tool } from "@openai/agents";
-import { z } from "zod";
-import { runTest } from "./harness.js";
-import { 
-  OpenAIModel, 
-  E2ETestSpec 
-} from "../types/index.js";
-import * as fs from "fs/promises";
-import * as path from "path";
+import { Agent, run, tool } from '@openai/agents'
+import { z } from 'zod'
+import { runTest } from './harness.js'
+import { OpenAIModel, E2ETestSpec } from '../types/index.js'
+import * as fs from 'fs/promises'
+import * as path from 'path'
 
 const TestStepSchema = z.object({
   step_number: z.number(),
@@ -15,31 +12,33 @@ const TestStepSchema = z.object({
   input_data: z.string().nullable().optional(),
   expected_result: z.string(),
   notes: z.string().nullable().optional(),
-});
+})
 
-function prettyPrintTestSteps(steps: z.infer<typeof TestStepSchema>[], title: string = "TEST STEPS") {
-  console.log("=" + "=".repeat(79));
-  console.log(title);
-  console.log("=" + "=".repeat(79));
+function prettyPrintTestSteps(
+  steps: z.infer<typeof TestStepSchema>[],
+  title: string = 'TEST STEPS'
+) {
+  console.log('=' + '='.repeat(79))
+  console.log(title)
+  console.log('=' + '='.repeat(79))
   steps.forEach((step, i) => {
-    console.log(`${i + 1}. ${step.action}`);
+    console.log(`${i + 1}. ${step.action}`)
     if (step.target_element) {
-      console.log(`   Target: ${step.target_element}`);
+      console.log(`   Target: ${step.target_element}`)
     }
     if (step.input_data) {
-      console.log(`   Input: ${step.input_data}`);
+      console.log(`   Input: ${step.input_data}`)
     }
-    console.log(`   Expected: ${step.expected_result}`);
+    console.log(`   Expected: ${step.expected_result}`)
     if (step.notes) {
-      console.log(`   Notes: ${step.notes}`);
+      console.log(`   Notes: ${step.notes}`)
     }
     if (i < steps.length - 1) {
-      console.log("");
+      console.log('')
     }
-  });
-  console.log("=" + "=".repeat(79));
+  })
+  console.log('=' + '='.repeat(79))
 }
-
 
 const E2ETestSpecSchema = z.object({
   test_name: z.string(),
@@ -47,47 +46,50 @@ const E2ETestSpecSchema = z.object({
   target_url: z.string(),
   test_steps: z.array(TestStepSchema),
   async_playwright_test_code: z.string(),
-});
+})
 
 const runTestTool = tool({
-  name: "run_test_tool",
-  description: "Run a Playwright test",
+  name: 'run_test_tool',
+  description: 'Run a Playwright test',
   parameters: z.object({
     test_name: z.string(),
     test_code: z.string(),
   }),
   async execute({ test_code }) {
     try {
-      await runTest("", test_code, {
+      await runTest('', test_code, {
         headless: false,
         debugStdout: true,
-      });
-      return { success: true, failure_output: null };
+      })
+      return { success: true, failure_output: null }
     } catch (e) {
-      const error = e as Error & { dom_snapshot?: string; accessibility_snapshot?: string };
-      let output = String(error);
+      const error = e as Error & {
+        dom_snapshot?: string
+        accessibility_snapshot?: string
+      }
+      let output = String(error)
       if (error.dom_snapshot) {
-        output += `\n\nDOM SNAPSHOT:\n${error.dom_snapshot}`;
+        output += `\n\nDOM SNAPSHOT:\n${error.dom_snapshot}`
       }
       if (error.accessibility_snapshot) {
-        output += `\n\nACCESSIBILITY SNAPSHOT:\n${error.accessibility_snapshot}`;
+        output += `\n\nACCESSIBILITY SNAPSHOT:\n${error.accessibility_snapshot}`
       }
-      return { success: false, failure_output: output };
+      return { success: false, failure_output: output }
     }
-  }
-});
+  },
+})
 
 const emitStepsTool = tool({
-  name: "emit_steps",
-  description: "Emit test steps to the user",
+  name: 'emit_steps',
+  description: 'Emit test steps to the user',
   parameters: z.object({
     test_steps: z.array(TestStepSchema),
   }),
   async execute({ test_steps }) {
-    prettyPrintTestSteps(test_steps, "PLANNED TEST STEPS");
-    return { success: true };
-  }
-});
+    prettyPrintTestSteps(test_steps, 'PLANNED TEST STEPS')
+    return { success: true }
+  },
+})
 
 export async function testWriterAgent(
   url: string,
@@ -95,7 +97,7 @@ export async function testWriterAgent(
   save?: boolean
 ): Promise<E2ETestSpec | null> {
   if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY environment variable is not set");
+    throw new Error('OPENAI_API_KEY environment variable is not set')
   }
   const prompt = `
     You are writing an E2E test. The user has provided a spec for what the test should do.
@@ -166,81 +168,90 @@ export async function testWriterAgent(
         // Optional: force a failure to exercise artifacts
         await expect(page.locator("fail")).toBeVisible();
     }
-  `;
+  `
 
   const agent = new Agent({
-    name: "E2E Test Writer",
+    name: 'E2E Test Writer',
     instructions: prompt,
     model: OpenAIModel.GPT_4_1 as string,
     tools: [runTestTool, emitStepsTool],
     outputType: E2ETestSpecSchema,
-  });
+  })
 
-  let result;
+  let result
   try {
     // Pass the URL as the initial message to the agent
-    result = await run(agent, url, { maxTurns: 20 });
+    result = await run(agent, url, { maxTurns: 20 })
   } catch (error) {
-    console.error("Error running agent:", error);
-    throw error;
+    console.error('Error running agent:', error)
+    throw error
   }
 
-  let finalOutput: E2ETestSpec | null = null;
-  
+  let finalOutput: E2ETestSpec | null = null
+
   // The run function returns a RunResult with the output
   if (result && typeof result === 'object') {
     // Check if result has a direct output or if it's wrapped in a state
-    let output = (result as unknown as Record<string, unknown> & { state?: { _currentStep?: { output?: unknown } }; output?: unknown }).state?._currentStep?.output || (result as unknown as Record<string, unknown> & { output?: unknown }).output || result;
-    
+    let output =
+      (
+        result as unknown as Record<string, unknown> & {
+          state?: { _currentStep?: { output?: unknown } }
+          output?: unknown
+        }
+      ).state?._currentStep?.output ||
+      (result as unknown as Record<string, unknown> & { output?: unknown })
+        .output ||
+      result
+
     // If output is a string, try to parse it as JSON
     if (typeof output === 'string') {
       try {
-        output = JSON.parse(output);
+        output = JSON.parse(output)
       } catch {
         // Failed to parse as JSON, keep as is
       }
     }
-    
-    const parsed = E2ETestSpecSchema.safeParse(output);
+
+    const parsed = E2ETestSpecSchema.safeParse(output)
     if (parsed.success) {
-      finalOutput = parsed.data as E2ETestSpec;
+      finalOutput = parsed.data as E2ETestSpec
     }
   }
 
   if (finalOutput) {
-    console.log("=" + "=".repeat(79));
-    console.log("E2E TEST SPECIFICATION");
-    console.log("=" + "=".repeat(79));
-    console.log(`Test Name: ${finalOutput.test_name}`);
-    console.log(`Test Description: ${finalOutput.test_description}`);
-    console.log(`Target URL: ${finalOutput.target_url}`);
-    console.log("\n" + "=" + "=".repeat(79));
-    console.log("PLAYWRIGHT TEST CODE");
-    console.log("=" + "=".repeat(79));
-    console.log(finalOutput.async_playwright_test_code);
-    prettyPrintTestSteps(finalOutput.test_steps, "FINAL TEST STEPS");
-    
+    console.log('=' + '='.repeat(79))
+    console.log('E2E TEST SPECIFICATION')
+    console.log('=' + '='.repeat(79))
+    console.log(`Test Name: ${finalOutput.test_name}`)
+    console.log(`Test Description: ${finalOutput.test_description}`)
+    console.log(`Target URL: ${finalOutput.target_url}`)
+    console.log('\n' + '=' + '='.repeat(79))
+    console.log('PLAYWRIGHT TEST CODE')
+    console.log('=' + '='.repeat(79))
+    console.log(finalOutput.async_playwright_test_code)
+    prettyPrintTestSteps(finalOutput.test_steps, 'FINAL TEST STEPS')
+
     if (save) {
-      const tempestDir = path.join(process.cwd(), 'tempest');
-      await fs.mkdir(tempestDir, { recursive: true });
-      
+      const tempestDir = path.join(process.cwd(), 'tempest')
+      await fs.mkdir(tempestDir, { recursive: true })
+
       const sanitizedTestName = finalOutput.test_name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      const fileName = `${sanitizedTestName}.spec.ts`;
-      const filePath = path.join(tempestDir, fileName);
-      
-      const testFileContent = finalOutput.async_playwright_test_code;
-      
-      await fs.writeFile(filePath, testFileContent, 'utf-8');
-      console.log("\n" + "=".repeat(79));
-      console.log(`Test saved to: ${filePath}`);
-      console.log("=".repeat(79));
+        .replace(/^-|-$/g, '')
+      const fileName = `${sanitizedTestName}.spec.ts`
+      const filePath = path.join(tempestDir, fileName)
+
+      const testFileContent = finalOutput.async_playwright_test_code
+
+      await fs.writeFile(filePath, testFileContent, 'utf-8')
+      console.log('\n' + '='.repeat(79))
+      console.log(`Test saved to: ${filePath}`)
+      console.log('='.repeat(79))
     }
   } else {
-    console.log("No final output available");
+    console.log('No final output available')
   }
 
-  return finalOutput;
+  return finalOutput
 }

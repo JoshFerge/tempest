@@ -1,72 +1,72 @@
-import { spawn } from "child_process";
-import * as path from "path";
-import * as dotenv from "dotenv";
+import { spawn } from 'child_process'
+import * as path from 'path'
+import * as dotenv from 'dotenv'
 
 // Load environment variables
-dotenv.config();
+dotenv.config()
 
 async function testCLI() {
-  console.log("Testing Tempest CLI...");
+  console.log('Testing Tempest CLI...')
   console.log(
-    "OPENAI_API_KEY is",
-    process.env.OPENAI_API_KEY ? "set" : "not set"
-  );
+    'OPENAI_API_KEY is',
+    process.env.OPENAI_API_KEY ? 'set' : 'not set'
+  )
 
   return new Promise<void>((resolve, reject) => {
     // Path to the CLI entry point
-    const cliPath = path.join(process.cwd(), "src", "index.ts");
+    const cliPath = path.join(process.cwd(), 'src', 'index.ts')
 
     // Run the CLI with tsx
     const child = spawn(
-      "npx",
-      ["tsx", cliPath, "localhost:8080", "play and have x win"],
+      'npx',
+      ['tsx', cliPath, 'localhost:8080', 'play and have x win'],
       {
         env: process.env,
-        stdio: ["inherit", "pipe", "pipe"],
+        stdio: ['inherit', 'pipe', 'pipe'],
       }
-    );
+    )
 
-    let stdout = "";
+    let stdout = ''
 
-    child.stdout?.on("data", (data) => {
-      const output = data.toString();
-      stdout += output;
-      process.stdout.write(output);
-    });
+    child.stdout?.on('data', data => {
+      const output = data.toString()
+      stdout += output
+      process.stdout.write(output)
+    })
 
-    child.stderr?.on("data", (data) => {
-      const output = data.toString();
-      process.stderr.write(output);
-    });
+    child.stderr?.on('data', data => {
+      const output = data.toString()
+      process.stderr.write(output)
+    })
 
-    child.on("error", (error) => {
-      console.error("❌ Failed to start CLI:", error);
-      reject(error);
-    });
+    child.on('error', error => {
+      console.error('❌ Failed to start CLI:', error)
+      reject(error)
+    })
 
-    child.on("close", (code) => {
+    child.on('close', code => {
       if (code === 0) {
         if (
-          stdout.includes("E2E TEST SPECIFICATION") &&
-          stdout.includes("TEST STEPS")
+          stdout.includes('E2E TEST SPECIFICATION') &&
+          stdout.includes('TEST STEPS')
         ) {
           console.log(
-            "\n✅ CLI test passed! Agent generated test successfully via CLI."
-          );
-          resolve();
+            '\n✅ CLI test passed! Agent generated test successfully via CLI.'
+          )
+          resolve()
         } else {
-          console.error("\n❌ CLI test failed: Expected output not found");
-          reject(new Error("Expected output not found in CLI response"));
+          console.error('\n❌ CLI test failed: Expected output not found')
+          reject(new Error('Expected output not found in CLI response'))
         }
       } else {
-        console.error(`\n❌ CLI test failed with exit code ${code}`);
-        reject(new Error(`CLI exited with code ${code}`));
+        console.error(`\n❌ CLI test failed with exit code ${code}`)
+        reject(new Error(`CLI exited with code ${code}`))
       }
-    });
-  });
+    })
+  })
 }
 
-testCLI().catch((error) => {
-  console.error("Test failed:", error);
-  process.exit(1);
-});
+testCLI().catch(error => {
+  console.error('Test failed:', error)
+  process.exit(1)
+})

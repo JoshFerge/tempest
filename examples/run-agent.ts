@@ -1,14 +1,11 @@
-import { testWriterAgent } from "../src/lib/agent.js";
-import dotenv from "dotenv";
+import { testWriterAgent } from '../src/lib/agent.js'
+import { config } from 'dotenv'
 
 // Load environment variables from .env file
-dotenv.config();
+config()
 
 async function main() {
-  await testWriterAgent(
-    "localhost:8080",
-    "play and have x win."
-  );
+  await testWriterAgent('localhost:8080', 'play and have x win.')
 }
 
-main().catch(console.error);
+main().catch(console.error)
